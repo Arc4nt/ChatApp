@@ -1,0 +1,54 @@
+﻿<md-tabs md-selected="selectedIndex"  md-autoselect md-dynamic-height>
+    <div  ng-repeat="tab in tabs">
+        
+        <md-tab ng-disabled="tab.disabled"  label="{{tab.title}}">
+            
+            <div class="demo-tab tab{{$index%4}}" style="padding: 0; text-align: center;">
+
+                <br />
+                
+                    <md-list class="parent" style="height:40vh;overflow:auto;">
+                        <md-list-item class="md-3-line" ng-repeat="msg in tab.msg">
+
+                            <div  class="md-list-item-text">
+                                <h3 style="word-wrap:break-word">{{msg.from}}</h3>
+                                <p ng-show="msg.scribble">
+                                    <img src="{{msg.msg}}" />
+                                </p>
+                                <p ng-hide="msg.scribble">
+                                    {{msg.msg}}
+                                </p>
+                            </div>
+                            <md-divider inset></md-divider>
+                        </md-list-item>
+                    </md-list>
+             
+
+
+
+            </div>
+            <div style="position:page;top:80%;left:30%; width:100%;height:20vh" ng-if="tab.mode">
+                <div style="width:100%">
+                    <md-button style="width:10%;" class="md-raised md-primary" ng-if="tab.mode" ng-click="addToGroup(tab.to)">ADD</md-button>
+                    <input ng-if="tab.mode" style="width:20%;" placeholder="User" type="text" id="invited{{tab.to}}" />
+                    <md-button style="width:10%;" class="md-raised md-primary" ng-if="tab.mode" ng-click="deleteFromGroup(tab.to)">Leave</md-button><!--deleteFromGroup(tab.to)-->
+                   
+                </div>
+                <div style="width:100%">
+                    <md-button style="width:10%;" class="md-raised md-primary" ng-click="toogleScribble(tab)">Mode</md-button>
+                    <canvas ng-show="tab.scribble" id="canvas{{tab.to}}" width="100" height="35" style="border:1px solid #000000;position:relative;top:10px"></canvas>
+                    <textarea style="width:20%;" maxlength="150" ng-hide="tab.scribble" id="{{tab.to}}" placeholder="message"></textarea>
+                    <md-button style="width:10%;" class="md-raised md-primary" ng-click="sendMsg(tab)">Send</md-button>
+                </div>
+            </div>
+            <div style="position:page;top:85%;left:30%; width:100%" ng-if="!tab.mode">
+                <md-button style="width:20%"class="md-raised md-primary" ng-click="toogleScribble(tab)">Mode</md-button>
+                <canvas ng-show="tab.scribble" id="canvas{{tab.to}}" width="100" height="35" style="border:1px solid #000000;position:relative;top:10px"></canvas>
+                <textarea style="width:20%" maxlength="150" ng-hide="tab.scribble" id="{{tab.to}}" placeholder="message"></textarea>
+                <md-button style="width:20%" class="md-raised md-primary" ng-click="sendMsg(tab)">Send</md-button>
+            </div>
+            
+        </md-tab>
+        
+    </div>
+</md-tabs>

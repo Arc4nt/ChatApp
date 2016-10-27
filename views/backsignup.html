@@ -1,0 +1,48 @@
+
+
+<div ng-controller="defaultCtrl" layout="column" style="width:400px"layout-padding ng-cloak>
+    <br />
+
+    <md-content class="autoScroll">
+        <form>
+            {{signUpError}}
+            <md-input-container class="md-icon-float md-block">
+                <!-- Use floating label instead of placeholder -->
+                <label>userName</label>
+                <md-icon md-svg-src="ic_input_black_24px.svg" class="name"></md-icon>
+                <input ng-model="userName" type="text" ng-required="true">
+            </md-input-container>
+
+            <md-input-container class="md-icon-float md-block">
+                <!-- Use floating label instead of placeholder -->
+                <label>ID</label>
+                <md-icon md-svg-src="ic_input_black_24px.svg" class="name"></md-icon>
+                <input ng-model="ID" type="text" ng-required="true">
+            </md-input-container>
+
+            <md-input-container class="md-icon-float md-block">
+                <!-- Use floating label instead of placeholder -->
+                <label>email</label>
+                <md-icon md-svg-src="ic_input_black_24px.svg" class="name"></md-icon>
+                <input ng-model="email" type="email" ng-required="true">
+            </md-input-container>
+
+            <md-input-container class="md-icon-float md-block">
+                <!-- Use floating label instead of placeholder -->
+                <label>password</label>
+                <md-icon md-svg-src="ic_input_black_24px.svg" class="name"></md-icon>
+                <input ng-model="password1" type="password" ng-required="true">
+            </md-input-container>
+            <md-input-container class="md-icon-float md-block">
+                <!-- Use floating label instead of placeholder -->
+                <label>password</label>
+                <md-icon md-svg-src="ic_input_black_24px.svg" class="name"></md-icon>
+                <input ng-model="password2" type="password" ng-required="true">
+            </md-input-container>
+         
+                <md-button ng-click="submitSignUpForm()" class="md-raised md-primary">Submit</md-button>
+  
+</form>
+    </md-content>
+
+</div>

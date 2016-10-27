@@ -1,0 +1,78 @@
+﻿
+
+<md-sidenav class="md-sidenav-left md-whiteframe-z2" md-component-id="left" md-is-locked-open=true style="width:100% ;height: 100vh;">
+    <md-toolbar style="width:100%" class="md-theme-indigo">
+        <div class="md-toolbar-tools">
+            <div style="width:20%; margin:auto;" ng-click="toogleFriends()">
+                <input style="width:80%" type="image" src="ic_report_white_24px.svg">
+            </div>
+            <div style="width:20%; margin:auto;" ng-click="toogleRequests()">
+                <input style="width:80%"type="image" src="ic_message_white_24px.svg">
+            </div>
+            <div style="width:20%; margin:auto;">
+                <input type="image" style="width:80%" src="ic_add_circle_white_24px.svg" ng-click="toogleAddContact()">
+            </div>
+            <div style="width:20%; margin:auto;">
+                <input type="image" style="width:80%" src="ic_group_white_24px.svg" ng-click="toogleGroup()">
+            </div>
+        </div>
+    </md-toolbar>
+
+    <form method="post"style="width:100%" ng-show="isAdd" ng-submit="addContact()">
+        <br>
+        <input style="width:70%;margin-left:15%;" type="text" ng-model="contact" name="contact" placeholder="Contact"  required />
+
+        <md-button style="width:50%;margin-left:25%;" class="md-raised md-primary s" ng-click="addContact()" >Submit</md-button>
+
+    </form>
+
+    <div style="width:100%" ng-show="isGroup">
+        <div style="padding-top:10px">
+            <input ng-model="groupName" style="width:60%" type="text" placeholder="GroupName" />
+            <input style="width:30%" type="button" value="Create" ng-click="createGroup()" />
+        </div>
+            <div ng-repeat="item in groups">
+                <md-button class="md-raised md-primary" style="width:100%"ng-click="startGroupConversation(item)">{{item.groupName}}</md-button>
+                <span ng-repeat="a in item.users">
+                    <md-chips>
+
+                        <md-chip>{{a}}</md-chip>
+
+                    </md-chips>
+                </span>
+       </div>         
+
+    </div >
+
+    <div  style="width:100%" ng-show="isFriends">
+        <table style="width:100%">
+            <tr style="width:100%;">
+                <th style="width:70%;font-size:1em">User</th>
+              
+                <th style="width:25%;font-size:1em">delete</th>
+            </tr>
+            <tr style="width:100%;" ng-repeat="item in listInDirective">
+             <td ng-click="startConversation(item)" ng-show="item.status" style="width:70%">   <md-chips><md-chip style="background:lightgreen;width:100%;">{{item.userID}}</md-chip></md-chips></td>
+             <td ng-hide="item.status" style="width:70%">   <md-chips><md-chip style="background:lightpink;width:100%;">{{item.userID}}</md-chip></md-chips></td>
+               
+                  
+                    <td ng-show="item.status!=undefined" style="width:25%"><input img style=" display: block; margin: 0 auto;" type="image" src="ic_delete_black_24px.svg" ng-click="delete(item.userID)" /></td>
+</tr>
+        </table>
+    </div>
+
+    <div style="width:100%" ng-show="isRequest">
+     <span  style="width:50%;font-size:1em;margin:0,auto;display:block"><b>Pending Requests:</b></span>
+         <table style="width:100%">
+           
+            <tr ng-repeat="item in requestListInDirective">
+                <td style="width:20%"><input type="image" style=" display: block; margin: 0 auto;" src="ic_check_circle_black_24px.svg" ng-click="acceptUser(item.userID)" /></td>
+                <td style="width:50%"><md-chips><md-chip style="background:lightgray;width:100%">{{item.userID}}</md-chip></md-chips></td>
+                <td style="width:20%"><input type="image" style=" display: block; margin: 0 auto;" src="ic_delete_black_24px.svg" ng-click="rejectUser(item.userID)" /></td>
+            </tr>
+        </table>
+    </div>
+
+</md-sidenav>
+
+

@@ -1,0 +1,791 @@
+<!doctype html>
+<html ng-app="app">
+<head>
+    <link rel="stylesheet" href="/angular-material/angular-material.css">
+    <script src="jquery.min.js"></script>
+    <script src="angular.js"></script>
+    <script src="angular-route.js"></script>
+    <script src="angular-cookies.js"></script>
+    <script src="socket.io.js"></script>
+    <script src="/angular-aria/angular-aria.js"></script>
+    <script src="/angular-animate/angular-animate.js"></script>
+    <script src="/angular-material/angular-material.js"></script>
+    <base href="/">
+    <script>
+
+        var mod = angular.module("app", ['ngRoute', 'ngMaterial']);
+
+        ///////////////////////ROUTES//////////////////////
+        mod.config(function ($routeProvider, $locationProvider, $httpProvider) {
+
+            $routeProvider
+            .when('/main', {
+                templateUrl: 'main.html',
+                controller: 'mainCtrl',
+                resolve: {
+                    message: function (checkUser) {
+                        return checkUser.check();
+                    }
+                }
+            })
+
+            .when('/login', {
+                templateUrl: 'backlogin.html',
+                controller: 'defaultCtrl',
+                resolve: {
+                    message: function (checkUser2) {
+                        return checkUser2.check();
+                    }
+                }
+            })
+            .otherwise({ redirectTo: 'main' })
+            $locationProvider.html5Mode(true);
+            $httpProvider.interceptors.push('myHttpInterceptor');
+        });
+        /////////////////////SERVICES///////////////////////
+        mod.provider("valid", function () {
+            return {
+                $get: function () {
+                    var user = "";
+                    var list = [];
+                    var reqList = [];
+                    var groupList = [];
+                    return {
+                        getUser: function () { console.log("service user" + user); return user; },
+                        setUser: function (value) { console.log("setting users" + value); user = value },
+                        getList: function () { console.log("returning List"); return list; },
+                        addList: function (value) { console.log("adding to list"); list.push(value); },
+                        setList: function (value) { console.log("setting the list"); console.log(list); list = value; },
+                        getRequestList: function () { console.log("returning request list" + reqList); return reqList; },
+                        setRequestList: function (value) { console.log("setting the req list"); reqList = value; },
+                        removeRequestList: function (value) { console.log(value); console.log("removing from requestlist" + value); for (var i = 0; i < reqList.length; i++) { if (reqList[i].userID == value) { reqList.splice(i, 1); } } },//esto a webo se tiene que cambiar ahorita funciona por error
+                        addRequestList: function (value) { console.log("adding to Requestlist"); reqList.push(value); },
+                        setGroupList: function (value) { console.log("setting groupList"); groupList = value },
+                        removeGroupList: function (value) { console.log("removing from groupList"); for (var i = 0; i < groupList.length; i++) { if (groupList[i].group == value.group) groupList.splice(i, 1); } },//     var index = groupList.indexOf(value); groupList.splice(index, 1); },//this might be wrong
+                        addGroupList: function (value) { console.log("Adding to group list"); groupList.push(value); },
+                        getGroupList: function () { console.log("getting groupList"); return groupList; },
+                        updateGroupList: function (value) { for (var i = 0; i < groupList.length; i++) { if (groupList[i].group == value.group) { groupList[i] = value; console.log(value) } } },
+                        removeUserFromGroup: function (data) {
+                            for (var i = 0; i < groupList.length; i++) {
+                                if (groupList[i].group == data.group) {
+                                    for (var j = 0; j < groupList[i].users.length; j++) {
+                                        if (groupList[i].users[j] == data.userID) {
+                                            groupList[i].users.splice(j, 1);
+                                            console.log("removing user")
+                                        }
+                                    }
+                                    if (data.userID == this.getUser()) {
+                                        groupList.splice(i, 1);
+                                        console.log("removing tab;")
+                                        console.log(groupList);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        mod.service("sockets", function (valid, $rootScope, tabsForChat,$location) {
+
+
+            var chat;
+
+            this.connect = function (id) {
+                chat = io.connect("http://localhost:1337/chat", { 'forceNew': true });
+                chat.on('connect', function () {
+                    console.log("client on connect waaa ++++++++++++++++++++++++++++++++++++++++");
+                    chat.emit("id", { "id": id, groups: valid.getGroupList() });
+
+                });
+            }
+            this.delete = function () {
+                chat.on("delete", function (data) {
+                    console.log("someone Triggered a contact Request" + data.from);
+                    var list = valid.getList();
+                    for (var i = 0; i < list.length; i++) {
+                        if (list[i].userID == data.from) {
+                            list.splice(i, 1);
+                            console.log("yei encntre a alguien aqui :u")
+                            break;
+                        }
+                    }
+                    valid.setList(list);
+                    $rootScope.$apply();
+                });
+            }
+            this.contactRequest = function () {
+                chat.on("contactRequest", function (data) {
+                    console.log("someone Triggered a contact Request" + data.from);
+                    valid.addRequestList({ "userID": data.from });
+                    $rootScope.$apply();
+                });
+            }
+
+            this.acceptRequest = function () {
+                chat.on("acceptRequest", function (data) {
+                    console.log("someone Triggered a Accept Request" + data.from);
+                    var reqList = valid.getRequestList();
+                    var list = valid.getList();
+                    var done = false;
+                    for (var i = 0; i < list.length; i++) {
+                        if (list[i].userID == data.from) {
+                            list[i].status = data.status
+                            console.log("aqui esta el pedo");
+                            done = true;
+                            break;
+                        }
+                    }
+                    
+                    for (var i = 0; i < reqList.length; i++) {
+                        if (reqList[i].userID == data.from) {
+                            reqList.splice(i, 1);
+                            console.log("o tal vez aqui");
+                            if(done==false)
+                            list.push({ "userID": data.from, "status": data.status })
+                            break;
+                        }
+                    }
+                    valid.setRequestList(reqList)
+                    console.log(list);
+                    valid.setList(list);
+                    $rootScope.$apply();
+                });
+            }
+
+            this.loginNotification = function () {
+                chat.on("loginNotification", function (data) {
+                    console.log("someone Triggered a loginNotification" + data.from);
+                    var list = valid.getList();
+                    for (var i = 0; i < list.length; i++) {
+                        if (list[i].userID == data.from) {
+                            list[i].status = true;
+                        }
+                    }
+                    valid.setList(list);
+                    $rootScope.$apply();
+                    // $scope.$apply();
+                });
+            }
+
+            this.logoutNotification = function () {
+                chat.on("logoutNotification", function (data) {
+                    console.log("someone Triggered a logOUTNotification" + data.from);
+                    var list = valid.getList();
+                    for (var i = 0; i < list.length; i++) {
+                        if (list[i].userID == data.from) {
+                            list[i].status = false;
+                        }
+                    } console.log(":UUUU")
+                    if (data.from == valid.getUser()) {
+                        console.log("noooooooo")
+                        valid.setRequestList("");
+                        valid.setList("");
+                        valid.setUser("");
+                        valid.setGroupList("");
+                        tabsForChat.resetTabs();
+                        $rootScope.errorMsg = "";
+                        $location.path("/login");
+                    }
+                    valid.setList(list);
+                    $rootScope.$apply();
+                    //   $scope.$apply();
+                });
+            }
+            this.logout = function () {
+                chat.disconnect();
+                chat.close();
+            }
+
+            this.sendMsg = function (id, to, sender, value, scribble) {
+                console.log(id)
+                console.log(to)
+                console.log(sender)
+                console.log(value)
+                console.log(scribble)
+                chat.emit("sendMsg", { mode:0,to: to, title: id, msg: [{ from: sender, msg: value, scribble: scribble }] });
+            }
+            this.sendGroupMsg = function (id, to, sender, value, scribble) {
+                console.log(id)
+                console.log(to)
+                console.log(sender)
+                console.log(value)
+                console.log(scribble)
+                chat.emit("sendGroupMsg", { mode:1,to: to, title: id, msg: [{ from: sender, msg: value, scribble: scribble }] });
+            }
+            this.incommingMsg = function () {
+                chat.on("incommingMsg", function (data) {
+                    console.log("fire in the hole");
+                    if (data.group != undefined)
+                        data.mode = 1;
+
+                    if (data.mode == 0) {
+                        if(data.msg[0].from==valid.getUser()){
+                            tabsForChat.receiveTab(data);
+                            $rootScope.$apply();
+                            $('.parent').scrollTop(10000);
+                       }
+                        for (var i = 0; i < valid.getList().length; i++) {
+                            console.log(valid.getList()[i])
+                            if (data.msg[0].from == valid.getList()[i].userID && valid.getList()[i].status) {
+                                console.log("it is a friend");
+                                tabsForChat.receiveTab(data);
+                                $rootScope.$apply();             //TODO:avoid multiple if 2 tabs are oppened go to main instead of login
+                                $('.parent').scrollTop(10000);
+                            }
+                        }
+                    }
+                    if(data.mode==1){
+                    tabsForChat.receiveTab(data);
+                    $rootScope.$apply();
+                    $('.parent').scrollTop(10000);
+                    }
+                })
+            }
+            this.acceptIncommingChats = function () {
+                chat.on("requestToJoinGroupChat", function (data) {
+                    console.log("i got an incommingChat" + data.group);
+                    data.mode = 1;
+                    valid.addGroupList(data);
+                    $rootScope.$apply();
+                    chat.emit("aceptedGroupChat", data)
+                })
+            }
+            this.joinedRoom = function () {//a user can be added to a group several times have to check on that
+                chat.on("joined", function (data) {
+                    console.log("updating list");
+                    valid.updateGroupList(data);
+                    $rootScope.$apply();
+                })
+            }
+            this.leaveChat = function () {
+                chat.on("leaveChat", function (data) {
+                    chat.emit("removeFromChat", { group: data.group, userID: valid.getUser() })
+                })
+            }
+            this.removeUserFromGroup = function () {
+                chat.on("removeUserFromGroup", function (data) {
+                    valid.removeUserFromGroup(data)
+                    tabsForChat.remove(data)
+                    $rootScope.$apply();
+                });
+
+            }
+        });
+
+        mod.service("tabsForChat", function (valid,$rootScope) {
+            var index = { index: 0 };
+            var tab = [];
+            this.getIndex = function () { return index; };
+            this.setIndex = function (val) { index.index = val; }
+            this.updateIndex = function (id, mode) {
+                for (var i = 0; i < tab.length; i++) {
+                    if (mode) {
+                        console.log("INSIDE");
+                        if (tab[i].to == id) {
+                            //HEREEEEE now is creating a new one not cool 
+                            
+                            index.index = i;
+                            console.log("FOUNDDD" + this.getIndex().index)
+                            $rootScope.$broadcast("hi");
+                            return true;
+                        }
+                    } else {
+                        console.log(tab[i])
+                        console.log(id);
+                        if (tab[i].title == id) {
+
+                            index.index = i;
+                            console.log("FOUNDDD" + this.getIndex().index)
+                            $rootScope.$broadcast("hi");
+                            return true;
+                        }
+                    }
+                };
+            };
+            this.resetTabs = function () { tab = [] };
+            this.getTab = function () { return tab; };
+            this.addTab = function (value) { console.log("adding tab"); tab.push(value); };
+            this.remove = function (data) {
+                console.log("swiwiw")
+                for (var i = 0; i < tab.length; i++) {
+                    if (tab[i].to == undefined)
+                        continue;
+                    if (tab[i].to == data.group&&data.userID==valid.getUser()) {
+                        tab.splice(i, 1);
+                        console.log("splicing")
+                    }
+                }
+            }
+            this.receiveTab = function (value) {
+                console.log("receiving tab");
+                var found = false;
+                for (var i = 0; i < tab.length; i++) {
+                    if (value.mode) {
+                        console.log("CUAC0");
+                        console.log(tab[i]);
+                        console.log(value.to)
+                        if (tab[i].to == value.to) {
+                            console.log("CUAC1");
+                            found = true;
+                            tab[i].msg.push({ from: value.msg[0].from, msg: value.msg[0].msg, scribble: value.msg[0].scribble });//there should be a better way to do it instead of sending arrays but for now lets keep it this way
+                            console.log(tab[i].msg);
+                          
+                            while (tab[i].msg.length > 10)
+                                tab[i].msg.shift();
+                        }
+                    } else {
+                        console.log("CUACas0");
+                        console.log(tab[i].title)
+                        console.log(value)
+                        if (tab[i].title == value.title) {
+                            console.log("CUACas1");
+                            found = true;
+                            tab[i].msg.push({ from: value.msg[0].from, msg: value.msg[0].msg, scribble: value.msg[0].scribble });//there should be a better way to do it instead of sending arrays but for now lets keep it this way
+                            console.log(tab[i].msg);
+                            while (tab[i].msg.length > 20)
+                                tab[i].msg.pop();
+                        }
+                    }
+
+                }
+                if (found == false) {
+                    console.log("adding new tabs");
+                    console.log(value);
+                    if (value.msg[0] != undefined && value.mode==0)
+                        value.to = value.msg[0].from;
+                    console.log(value);
+                    this.addTab(value);
+                }
+            }
+        });
+
+        mod.factory("checkUser", function ($q, valid, $location, $http) {
+            return {
+                check: function () {
+
+                    return $q(function (resolve, reject) {
+                        if (valid.getUser() != "" && valid.getUser() != null && valid.getUser() !=undefined) { console.log("there is a user in the scope"); resolve(valid.getUser()) }
+                        else {
+                            $http.get("/api/me")
+                                .success(function (data) { console.log("there is a user in the cookie"); console.log(data); valid.setUser(data.userID); valid.setList(data.contacts.concat(data.pendingContacts)); valid.setRequestList(data.requestedToContact); valid.setGroupList(data.groups); resolve(valid.getUser()); })
+                                .error(function () { console.log("no user at all"); reject("no user"); $location.path("/login"); })
+                        }
+                    });
+                }
+            };
+        });
+       
+        mod.factory("checkUser2", function ($q, valid, $location, $http) {
+            return {
+                check: function () {
+
+                    return $q(function (resolve, reject) {
+                        if (valid.getUser() != "" && valid.getUser() != null && valid.getUser() != undefined) { console.log("there is a user in the scope"); reject(valid.getUser()); $location.path("/main"); }
+                        else {
+                            $http.get("/api/me")
+                                .success(function (data) { console.log("there is a user in the cookie"); console.log(data); valid.setUser(data.userID); valid.setList(data.contacts.concat(data.pendingContacts)); valid.setRequestList(data.requestedToContact); valid.setGroupList(data.groups); reject(valid.getUser()); $location.path("/main"); })
+                                .error(function () { console.log("no user at all"); resolve("no user");  })
+                        }
+                    });
+                }
+            };
+        });
+        mod.factory('myHttpInterceptor', function ($q, $location, $rootScope) {
+            return {
+                'responseError': function (rejection) {
+                    // do something on error
+                    console.log(rejection);
+                    if (rejection.status == 401) {
+                        console.log("wiii rejections :C basically friendzoned waa\n");
+                        if (rejection.data != "") {
+                            console.log("yooo its supposed there is a data!");
+                            $rootScope.errorMsg = rejection.data;
+                            setTimeout(function () { $rootScope.errorMsg = ""; $rootScope.$apply(); }, 2000);
+                            return $q(function (resolve, reject) { reject(rejection); });
+                        }
+                    }
+                    return rejection;
+                }
+            };
+        });
+
+        mod.directive("contacts", function (tabsForChat, $http, valid) {
+            return {//need to create a directive that given a the list will display them so it can be more configurable
+                link: function (scope, element, attrs) {
+                    scope.$watch(function () { return scope.list }, function (newVal, oldVal) {//this in unnecesary unless wanted to make configurable
+                        if (typeof newVal !== 'undefined') {
+                            scope.listInDirective = scope.list;
+                        }
+                    });
+
+                    scope.listInDirective = scope[attrs["contacts"]];
+                    scope.requestListInDirective = scope[attrs["requests"]];
+                    scope.isFriends = true;
+
+                    scope.startConversation = function (item) {
+                        // var obj = ;
+                        if (!tabsForChat.updateIndex([item.userID, scope.id].sort().join(), 0))
+                           tabsForChat.receiveTab({ to: item.userID, title: [item.userID, scope.id].sort().join(), msg: [], mode: 0, scribble: false });
+                   
+                    }
+
+                    scope.startGroupConversation = function (item) {
+                        console.log(item);
+                        if(!tabsForChat.updateIndex(item.group,1))
+                            tabsForChat.receiveTab({ to: item.group, title: item.groupName, msg: [], mode: 1, scribble: false });
+                      
+                    }
+                    scope.toogleAddContact = function (ev) {
+                        scope.isAdd = true;
+                        scope.isFriends = false;
+                        scope.isRequest = false;
+                        scope.isGroup = false;
+                    };
+                    scope.toogleFriends = function (ev) {
+                        scope.isAdd = false;
+                        scope.isFriends = true;
+                        scope.isRequest = false;
+                        scope.isGroup = false;
+                    };
+                    scope.toogleRequests = function (ev) {
+                        scope.isAdd = false;
+                        scope.isFriends = false;
+                        scope.isRequest = true;
+                        scope.isGroup = false;
+                    };
+                    scope.toogleGroup = function (ev) {
+                        scope.isAdd = false;
+                        scope.isFriends = false;
+                        scope.isRequest = false;
+                        scope.isGroup = true;
+                    };
+                },
+                restrict: "E",
+                templateUrl: "templateContacts.html"
+            }
+        })
+
+        mod.directive("chatWindow", function (tabsForChat, sockets, $http,$rootScope) {
+            return {
+                link: function (scope, element, attrs) {
+                    console.log("inside chatWindow Directive");
+
+                    tabsForChat.receiveTab({ to:"default" ,id: "", title: "default", msg: [{ from: 'me', msg: "You can swipe left and right on a mobile device to change tabs." }] });
+
+                    var tabs = tabsForChat.getTab();
+                    selected = null,
+                    previous = null;
+                    scope.tabs = tabs;
+                    scope.selectedIndex = 0;
+                    scope.$watch('selectedIndex', function (current, old) {
+                        previous = selected;
+                        selected = tabs[current];
+                        if (old + 1 && (old != current)) console.log('Goodbye ' + previous.title + '!');
+                        if (current + 1) console.log('Hello ' + selected.title + '!');
+                    });
+                    scope.$on("hi", function () {
+                        console.log("WSAS" + tabsForChat.getIndex().index);
+                        scope.selectedIndex = tabsForChat.getIndex().index;
+                       // previous = selected;
+                        //selected = tabs[tabsForChat.getIndex().index]
+                    });
+                    scope.addTab = function (title, view) {//not needed
+                        view = view || title + " Content View";
+                        tabs.push({ title: title, content: view, disabled: false });
+                    };
+
+                    scope.removeTab = function (tab) {//not needed
+                        var index = tabs.indexOf(tab);
+                        tabs.splice(index, 1);
+                    };
+                    scope.sendMsg = function (tab) {
+                        console.log("joabas");
+                        var to = tab.to;
+                        var area = element.find("#" + to);
+                        var idChat = tab.title;
+                        var mode = tab.mode;
+                        var scribble = tab.scribble;
+                        var text = area.val();
+                        if (scribble)
+                            text = element.find('#canvas' + to)[0].toDataURL();
+                        if (mode) {
+                            sockets.sendGroupMsg(idChat, to, scope.id, text, scribble); 
+                        }
+                        else {
+                            sockets.sendMsg(idChat, to, scope.id, text, scribble);
+                        }
+                        console.log(text);
+                        area.val("");
+                        var canvas=$('#canvas' + tab.to);
+                        var context=canvas[0].getContext("2d");
+                        context.clearRect(0, 0, canvas[0].width, canvas[0].height);
+                        context.beginPath();
+                    }
+                    scope.addToGroup = function (id) {
+                        var inv = element.find("#invited" + id);
+                        var obj = { user: inv.val(), group: id };
+                        console.log(inv.val());
+                        $http.post("/addToGroup", obj).success(function (data) {
+                            console.log("Added to Group Correctly");
+                            inv.val(null);
+
+                        }).error(function () {
+                            console.log("error adding to group");
+
+                        })
+
+                    }
+                    scope.toogleScribble = function (tab) {
+                        tab.scribble = !tab.scribble;
+                        var isDown = false;
+                        var ctx;
+                        var rect;
+                        var canvas = $('#canvas' + tab.to);
+                        var ev = $._data(canvas[0], 'events');
+                        if (ev && ev.click) console.log(ev);
+                        else {
+                            console.log("adding event");
+                            canvas.mousedown(function (e) {
+                                isDown = true;
+                                rect = canvas[0].getBoundingClientRect();
+                                ctx = canvas[0].getContext("2d");
+                                ctx.lineWidth = 1;
+                                ctx.lineJoin = ctx.lineCap = 'round';
+                                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+                                // NOTE: this below is refering to the HTML element, NOT the jQuery element
+                                console.log("look how i click click click");
+                            });
+                            canvas.mousemove(function (evt) {
+                                if (isDown) {
+
+                                    ctx.lineTo(evt.clientX - rect.left, evt.clientY - rect.top);
+                                    ctx.stroke();
+
+                                    // ctx.fillRect(evt.clientX - rect.left,evt.clientY - rect.top, 1, 1, 1);
+                                }
+                            })
+                            canvas.mouseup(function (evt) {
+                                isDown = false;
+                            })
+                        }
+                    }
+                    scope.deleteFromGroup = function (id) {
+                        var obj = { group: id };
+                        $http.post("/deleteFromGroup", obj).success(function (data) {
+                           // TODO:::need to remove tab
+                        }).error(function () {
+                            console.log("error deleting from group")
+                        })
+                    }
+                    // console.log(tabsForChat.getTab());
+                },
+                restrict: "E",
+                templateUrl: "chatWindow.html"
+            }
+        })
+        /////////////////////////////////NOT ONLY CONTROLLER///////////////////////
+        mod.controller("mainCtrl", function ($scope, $location, $http, valid, $rootScope, $mdDialog, $mdMedia, sockets, tabsForChat) {
+            console.log("using main controller Im not batman :C");
+            $scope.groups = valid.getGroupList();
+            $scope.id = valid.getUser();
+            $scope.list = valid.getList();
+            $scope.requestList = valid.getRequestList();
+
+
+          
+            ///////////Stuff from sockets////////////
+            sockets.connect($scope.id);
+            sockets.acceptRequest();
+            sockets.contactRequest();
+            sockets.delete();
+            sockets.loginNotification();
+            sockets.logoutNotification();
+            sockets.incommingMsg();
+            sockets.acceptIncommingChats();
+            sockets.joinedRoom();
+            sockets.removeUserFromGroup();
+            sockets.leaveChat();
+            ///////////END   Stuff from sockets////////////
+
+            //////////////functions with HTTP POST////////////
+            $scope.createGroup = function () {
+                if ($scope.groupName != "") {
+                    var obj = { groupName: $scope.groupName }
+                    $http.post("/createGroup", obj).success(function (data) {
+                        console.log("GroupCreated Correctly");
+                        // valid.addGroupList(data);
+                        $scope.groupName = "";
+                        //  console.log(valid.getGroupList());
+                    }).error(function () {
+                        console.log("error creating group");
+                        $scope.groupName = "";
+                    })
+                }
+
+            }
+            $scope.delete = function (id) {
+                var obj = { "userID": id };
+                $http.post("/api/deleteUser", obj).success(function (id) {
+                    console.log("deleted user");
+                }).error(function () {
+                    console.log("there was an error when trying to accept the user");
+                });
+            }
+            $scope.logout = function () {
+                console.log("logingOut");
+                $http.post("/logout").success(function (data) {
+                    //chat.emit("dissconect", { "id": $scope.id });
+                    sockets.logout();
+                    console.log(data);
+                    console.log("server returned logout success")
+                    valid.setRequestList("");
+                    valid.setList("");
+                    valid.setUser("");
+                    valid.setGroupList("");
+                    tabsForChat.resetTabs();
+                    $rootScope.errorMsg = "";
+                    $location.path("/login");
+                }).error(function (data) { console.log("server returned false and now i dont know what to do!!!"); })
+            }
+            $scope.acceptUser = function (id) {
+                var obj = { "userID": id };
+                $http.post("/api/acceptUser", obj).success(function (id) {
+                    console.log("accepted user");
+                }).error(function () {
+                    console.log("there was an error when trying to accept the user");
+                });
+            }
+            $scope.rejectUser = function (id) {
+                var obj = { "userID": id };
+                $http.post("/api/rejectUser", obj).success(function (data) { console.log("rejected user" + id); valid.removeRequestList(id); $scope.reqList = valid.getRequestList(); }).error(function () { console.log("there was an error when trying to reject the user"); });
+            }
+            $scope.addContact = function () {
+                var data = {
+                    "contact": $scope.contact
+                };
+                console.log("adding contact" + $scope.contact)
+                $http.post("/addContact", data).success(function (rData) {
+                    $rootScope.errorMsg = "User added Correctly";
+                    valid.setList(rData.contacts.concat(rData.pendingContacts));
+                    //valid.addList($scope.contact);
+                    console.log("contact add success");
+                    console.log(valid.getList());
+                    $scope.list = valid.getList();
+
+                }).error(function (rData) {
+                    console.log("contact add failed");
+
+                })
+                return false;
+            }
+            //////////////END functions with HTTP POST////////////
+        });
+
+        mod.controller("defaultCtrl", function ($scope, $location, $http, valid, $rootScope, $mdDialog, $mdMedia) {
+
+            console.log("using default controller im batman");
+            $scope.hide = function () {
+                $mdDialog.hide();
+            };
+            $scope.cancel = function () {
+                $mdDialog.cancel();
+            };
+            $scope.answer = function (answer) {
+                $mdDialog.hide(answer);
+            };
+            $scope.showAdvanced = function (ev) {//need to get rid of unnecesary stuff here
+                var useFullScreen = ($mdMedia('sm') || $mdMedia('xs')) && $scope.customFullscreen;
+                $mdDialog.show({
+                    controller: "defaultCtrl",
+                    templateUrl: 'backsignup.html',
+                    parent: angular.element(document.body),
+                    targetEvent: ev,
+                    clickOutsideToClose: true,
+                    fullscreen: useFullScreen
+                })
+                .then(function (answer) {
+
+                    $scope.status = 'You said the information was "' + answer + '".';
+                    console.log($scope.status);
+                }, function () {
+                    $scope.status = 'You cancelled the dialog.';
+                    console.log($scope.status);
+                });
+                $scope.$watch(function () {
+                    console.log($mdMedia('sm'));
+                    return $mdMedia('xs') || $mdMedia('sm');
+                }, function (wantsFullScreen) {
+                    console.log("seting to fullscreen");
+                    $scope.customFullscreen = false;
+                });
+            };
+
+            //////////////submitings//////////////
+
+            $scope.submitMyForm = function (e) {
+                var data = {
+                    "userName": $scope.userName,
+                    "password": $scope.password
+                };
+
+                $http.post("/login", data).success(function (rData) {
+
+                    valid.setUser(rData.userID);
+                    valid.setList(rData.contacts.concat(rData.pendingContacts));
+                    valid.setGroupList(rData.groups);
+                    console.log(rData.requestedToContact);
+                    valid.setRequestList(rData.requestedToContact);
+                    console.log("submit success");
+                    $rootScope.errorMsg = "";
+                    $location.path("/main");
+
+                }).error(function (rData) {
+
+                    console.log("submit failed");
+
+                })
+                return false;
+            }
+            $scope.submitSignUpForm = function () {
+                console.log("signing up :V");
+                var data = {
+                    "userName": $scope.userName,
+                    "ID": $scope.ID,
+                    "email": $scope.email,
+                    "password1": $scope.password1,
+                    "password2": $scope.password2
+                };
+                var reg = /^[a-zA-Z0-9]*$/g;
+                var isValidUsername = reg.test($scope.ID);
+                console.log(isValidUsername);
+              
+                if (isValidUsername == false) {
+                  
+                    $scope.signUpError = "only characters and numbers";
+                    
+                    return false;
+                }
+                $http.post("/signUp", data).success(function (rData) {
+                    console.log("wiwiwiwi" + rData);
+                    $rootScope.errorMsg = "";
+                    $scope.hide();
+                    $location.path("/main");
+                })
+                 .error(function (rData) {
+                     $scope.hide();
+                     console.log("signUp submit failed ");
+                 })
+                return false;
+            }
+        });
+
+
+    </script>
+</head>
+<body>
+
+    <div ng-view></div>
+</body>
+</html>

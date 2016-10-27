@@ -1,0 +1,5 @@
+.ntvs_analysis.dat
+HastaLaVistaBaby.njsproj
+-s-node_modules
+node_modules
+obj

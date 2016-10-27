@@ -1,0 +1,19 @@
+<div layout="column" style="height: 100vh;" ng-cloak>
+    <section layout="row" flex>
+        <contacts style="width:25%" contacts="list" requests="requestList">
+
+        </contacts>
+
+        <md-content  flex layout-padding>
+            <div layout="column" class="sample"  ng-cloak  >
+                <md-button  class="md-raised md-warn" ng-click="logout()">LOGOUT</md-button>
+                <p>Welcome	{{id}}</p>
+                {{errorMsg}}
+                <!--                 tabs                    -->
+                
+                    <chat-Window style="height:50vh"></chat-Window>
+                
+            </div>
+        </md-content>
+    </section>
+</div>
