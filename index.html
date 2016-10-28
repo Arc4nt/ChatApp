@@ -33,8 +33,7 @@ Whereas in the back-end technologies as: <strong>Nodejs</strong>, <strong>expres
 <h3>
 <a id="why-nodejs-and-socketio" class="anchor" href="#why-nodejs-and-socketio" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Why NodeJS and socketIO?</h3>
 
-<p>NodeJS has been coming up recently and can provide a pretty good response without the necessity of expensive hardware, and taking advantage of websockets and socketIO a live connection can be created to enable the server sending packages to the clients without the necessity that the client ask for it before. 
-Also in the worst case scenario, if the client cant handle websockets it would fallback to polling.</p>
+<p>The application server uses NodeJS and socketIO to stablish a live conection with the clients. This way  when a client is sending them a message, the destination clients are able to receive the notifications from the server. Also in the worst case scenario, if the client is not compatible with websockets, it would fallback to ajax polling keeping the funcionality of the application.</p>
 
 <h3>
 <a id="previews" class="anchor" href="#previews" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Previews</h3>
